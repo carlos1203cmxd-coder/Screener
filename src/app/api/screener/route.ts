@@ -7,7 +7,9 @@ import type { ScreenerResponse } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
-const RESULTS_PER_PANEL = 25;
+// Return enough candidates per panel for client-side filters (sector, market
+// cap, score) to have something to narrow down, not just the top ~25.
+const RESULTS_PER_PANEL = 60;
 const MIN_MARKET_CAP = 2_000_000_000; // filter out illiquid micro caps
 
 let cache: { data: ScreenerResponse; expiresAt: number } | null = null;

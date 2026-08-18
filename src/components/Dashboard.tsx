@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ScreenerResponse, ScoredStock } from "@/lib/types";
 import { formatMarketCap, formatPercent, formatPrice, formatRatio } from "@/lib/format";
 import { StockTable, type Column } from "@/components/StockTable";
+import { FilterBar } from "@/components/FilterBar";
+import { applyFilters, DEFAULT_FILTERS, uniqueSectors, type ScreenerFilters } from "@/lib/filters";
 
 function SymbolCell({ stock }: { stock: ScoredStock }) {
   return (
@@ -133,6 +135,8 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [undervaluedFilters, setUndervaluedFilters] = useState<ScreenerFilters>(DEFAULT_FILTERS);
+  const [overvaluedFilters, setOvervaluedFilters] = useState<ScreenerFilters>(DEFAULT_FILTERS);
 
   const fetchData = useCallback(async (forceRefresh: boolean) => {
     setError(null);
@@ -160,6 +164,18 @@ export function Dashboard() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchData(false);
   }, [fetchData]);
+
+  const undervaluedSectors = useMemo(() => uniqueSectors(data?.undervalued ?? []), [data]);
+  const overvaluedSectors = useMemo(() => uniqueSectors(data?.overvalued ?? []), [data]);
+
+  const filteredUndervalued = useMemo(
+    () => applyFilters(data?.undervalued ?? [], undervaluedFilters, "valueScore"),
+    [data, undervaluedFilters],
+  );
+  const filteredOvervalued = useMemo(
+    () => applyFilters(data?.overvalued ?? [], overvaluedFilters, "overvaluationScore"),
+    [data, overvaluedFilters],
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -214,8 +230,14 @@ export function Dashboard() {
                   Alto potencial de alza según analistas + PEG bajo + crecimiento estimado
                 </span>
               </div>
+              <FilterBar
+                filters={undervaluedFilters}
+                onChange={setUndervaluedFilters}
+                availableSectors={undervaluedSectors}
+                resultCount={filteredUndervalued.length}
+              />
               <StockTable
-                stocks={data.undervalued}
+                stocks={filteredUndervalued}
                 columns={undervaluedColumns}
                 defaultSortKey="score"
                 accentClass="bg-emerald-50/50 dark:bg-emerald-950/20"
@@ -228,8 +250,14 @@ export function Dashboard() {
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Sobrevaloradas</h2>
                 <span className="text-xs text-zinc-400">Cotizan por encima del objetivo de analistas + PEG/P-E elevados</span>
               </div>
+              <FilterBar
+                filters={overvaluedFilters}
+                onChange={setOvervaluedFilters}
+                availableSectors={overvaluedSectors}
+                resultCount={filteredOvervalued.length}
+              />
               <StockTable
-                stocks={data.overvalued}
+                stocks={filteredOvervalued}
                 columns={overvaluedColumns}
                 defaultSortKey="score"
                 accentClass="bg-red-50/50 dark:bg-red-950/20"
